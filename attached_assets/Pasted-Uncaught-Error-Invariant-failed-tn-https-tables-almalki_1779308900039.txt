@@ -1,0 +1,48 @@
+Uncaught Error: Invariant failed
+    tn https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:10
+    t1 https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:12
+    T2 https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:55
+    R2 https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:55
+    A2 https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:55
+    Ac https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    Kc https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    mg https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    Kg https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    I_ https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    H_ https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    Hg https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    am https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    ie https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    Uw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    Uw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    Pw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    Bw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    Hw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:10
+    <anonymous> https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:10
+index-BYdz6VwQ.js:10:41249
+    tn https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:10
+    t1 https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:12
+    T2 https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:55
+    AsyncFunctionNext self-hosted:780
+    (Async: async)
+    R2 https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:55
+    A2 https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:55
+    Ac https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    Kc https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    mg https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    Kg https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    I_ https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    H_ https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    Hg https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    am https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:9
+    ie https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    (Async: EventHandlerNonNull)
+    Uw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    Uw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    Pw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    Bw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:2
+    Hw https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:10
+    <anonymous> https://tables.almalkieducational.com/assets/index-BYdz6VwQ.js:10
+
+​
+
