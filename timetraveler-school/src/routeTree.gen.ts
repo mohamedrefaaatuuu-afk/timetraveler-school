@@ -30,6 +30,7 @@ import { Route as AppConstraintsRouteImport } from './routes/_app.constraints'
 import { Route as AppClassroomsRouteImport } from './routes/_app.classrooms'
 import { Route as AppClassesRouteImport } from './routes/_app.classes'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
+import { Route as AppAiAnalyzerRouteImport } from './routes/_app.ai-analyzer'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -135,6 +136,11 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAiAnalyzerRoute = AppAiAnalyzerRouteImport.update({
+  id: '/ai-analyzer',
+  path: '/ai-analyzer',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/analytics': typeof AppAnalyticsRoute
+  '/ai-analyzer': typeof AppAiAnalyzerRoute
   '/classes': typeof AppClassesRoute
   '/classrooms': typeof AppClassroomsRoute
   '/constraints': typeof AppConstraintsRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/analytics': typeof AppAnalyticsRoute
+  '/ai-analyzer': typeof AppAiAnalyzerRoute
   '/classes': typeof AppClassesRoute
   '/classrooms': typeof AppClassroomsRoute
   '/constraints': typeof AppConstraintsRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_app/analytics': typeof AppAnalyticsRoute
+  '/_app/ai-analyzer': typeof AppAiAnalyzerRoute
   '/_app/classes': typeof AppClassesRoute
   '/_app/classrooms': typeof AppClassroomsRoute
   '/_app/constraints': typeof AppConstraintsRoute
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/analytics'
+    | '/ai-analyzer'
     | '/classes'
     | '/classrooms'
     | '/constraints'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/analytics'
+    | '/ai-analyzer'
     | '/classes'
     | '/classrooms'
     | '/constraints'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/_app/analytics'
+    | '/_app/ai-analyzer'
     | '/_app/classes'
     | '/_app/classrooms'
     | '/_app/constraints'
@@ -419,11 +431,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/ai-analyzer': {
+      id: '/_app/ai-analyzer'
+      path: '/ai-analyzer'
+      fullPath: '/ai-analyzer'
+      preLoaderRoute: typeof AppAiAnalyzerRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppAiAnalyzerRoute: typeof AppAiAnalyzerRoute
   AppClassesRoute: typeof AppClassesRoute
   AppClassroomsRoute: typeof AppClassroomsRoute
   AppConstraintsRoute: typeof AppConstraintsRoute
@@ -442,6 +462,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
+  AppAiAnalyzerRoute: AppAiAnalyzerRoute,
   AppClassesRoute: AppClassesRoute,
   AppClassroomsRoute: AppClassroomsRoute,
   AppConstraintsRoute: AppConstraintsRoute,

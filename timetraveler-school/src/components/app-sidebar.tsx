@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, BookOpen, School, DoorOpen, CalendarDays,
-  Wand2, ShieldAlert, UserCheck, BarChart3, Settings, FileText, Bell,
+  Wand2, ShieldAlert, UserCheck, BarChart3, Settings, FileText, Bell, Brain,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -42,6 +42,7 @@ const groups = [
     items: [
       { title: "الإحصائيات", url: "/analytics", icon: BarChart3 },
       { title: "التقارير والطباعة", url: "/reports", icon: FileText },
+      { title: "تحليل الذكاء الاصطناعي", url: "/ai-analyzer", icon: Brain },
     ],
   },
   {
