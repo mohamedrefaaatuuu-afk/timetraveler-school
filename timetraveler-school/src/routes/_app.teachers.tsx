@@ -11,10 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, CalendarClock } from "lucide-react";
+import { Plus, Pencil, CalendarClock, FileSpreadsheet, Download } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SearchBar, ConfirmDelete } from "@/components/page-helpers";
 import { TeacherAvailabilityDialog } from "@/components/teacher-availability-dialog";
+import { downloadExcel, downloadTemplate } from "@/lib/excel-export";
 
 export const Route = createFileRoute("/_app/teachers")({ component: TeachersPage });
 
@@ -91,7 +92,17 @@ function TeachersPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="mb-4"><SearchBar value={search} onChange={setSearch} placeholder="بحث بالاسم أو الرقم أو التخصص..." /></div>
+          <div className="mb-4 flex flex-wrap gap-2 items-start justify-between">
+            <SearchBar value={search} onChange={setSearch} placeholder="بحث بالاسم أو الرقم أو التخصص..." />
+            <div className="flex gap-2 shrink-0">
+              <Button variant="outline" size="sm" onClick={() => downloadTemplate(["الاسم الكامل","رقم الموظف","التخصص","البريد الإلكتروني","الهاتف","الحد اليومي","الحد الأسبوعي"], "المعلمون")}>
+                <Download className="h-4 w-4 ms-1" /> قالب
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => downloadExcel(filtered.map((t) => ({ "الاسم": t.full_name, "رقم الموظف": t.employee_no ?? "", "التخصص": t.specialization ?? "", "البريد": t.email ?? "", "الهاتف": t.phone ?? "", "الحد اليومي": t.max_daily_lessons, "الحد الأسبوعي": t.max_weekly_lessons, "الحالة": t.status === "active" ? "نشط" : "غير نشط" })), "المعلمون", "المعلمون")}>
+                <FileSpreadsheet className="h-4 w-4 ms-1" /> تصدير Excel
+              </Button>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

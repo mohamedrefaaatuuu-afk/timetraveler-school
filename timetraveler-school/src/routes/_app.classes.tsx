@@ -11,11 +11,12 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, FileSpreadsheet, Download } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SearchBar, ConfirmDelete } from "@/components/page-helpers";
 import { STAGES, stageLabel } from "@/lib/constants";
 import type { EducationStage } from "@/lib/constants";
+import { downloadExcel, downloadTemplate } from "@/lib/excel-export";
 
 export const Route = createFileRoute("/_app/classes")({ component: ClassesPage });
 
@@ -65,7 +66,17 @@ function ClassesPage() {
         </Dialog>
       } />
       <Card><CardContent className="p-4">
-        <div className="mb-4"><SearchBar value={search} onChange={setSearch} placeholder="بحث باسم الفصل..." /></div>
+        <div className="mb-4 flex flex-wrap gap-2 items-start justify-between">
+          <SearchBar value={search} onChange={setSearch} placeholder="بحث باسم الفصل..." />
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(["اسم الفصل","المرحلة","الصف","عدد الطلاب","الحصص اليومية"], "الفصول")}>
+              <Download className="h-4 w-4 ms-1" /> قالب
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => downloadExcel(filtered.map((c) => ({ "الاسم": c.name, "المرحلة": stageLabel(c.stage), "الصف": c.grade_level ?? "", "عدد الطلاب": c.students_count, "الحصص اليومية": c.daily_lessons })), "الفصول", "الفصول")}>
+              <FileSpreadsheet className="h-4 w-4 ms-1" /> تصدير Excel
+            </Button>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader><TableRow>

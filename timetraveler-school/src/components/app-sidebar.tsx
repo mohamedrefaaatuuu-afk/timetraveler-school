@@ -9,6 +9,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
+import { getSchoolLogo } from "@/lib/school-branding";
 
 const groups = [
   {
@@ -57,18 +58,30 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { profile } = useAuth();
+  const { profile, school } = useAuth();
+
+  const logoUrl = getSchoolLogo(school?.name, school?.logo_url);
 
   return (
     <Sidebar collapsible="icon" side="right">
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 px-2 py-1">
-          <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center text-primary-foreground font-bold shadow-glow">
-            ج
-          </div>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={school?.name ?? "شعار المدرسة"}
+              className="h-9 w-9 rounded-xl object-contain bg-white p-0.5 shadow-sm border"
+            />
+          ) : (
+            <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center text-primary-foreground font-bold shadow-glow">
+              ج
+            </div>
+          )}
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-bold">جدولة برو</span>
+              <span className="text-sm font-bold leading-tight line-clamp-1">
+                {school?.name ? school.name.replace("مدارس ", "").replace(" الأهلية", "") : "جدولة برو"}
+              </span>
               <span className="text-xs text-muted-foreground truncate max-w-[140px]">
                 {profile?.full_name ?? "نظام إدارة الجداول"}
               </span>
@@ -105,7 +118,7 @@ export function AppSidebar() {
       <SidebarFooter className="border-t">
         {!collapsed && (
           <div className="px-2 py-2 text-xs text-muted-foreground">
-            الإصدار 1.0
+            {school?.name ?? "الإصدار 1.0"}
           </div>
         )}
       </SidebarFooter>

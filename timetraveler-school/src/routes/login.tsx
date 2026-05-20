@@ -14,48 +14,52 @@ export const Route = createFileRoute("/login")({
 const schools = [
   {
     id: 1,
-    name: "مدارس فناديل الشرق الأهلية",
+    name: "مدارس قناديل الشرق الأهلية",
+    logo: "/schools/qanadeel.png",
     gender: "للبنين والبنات",
     genderColor: "bg-violet-100 text-violet-700",
-    description: "فنادل أضيء الطريق — توحد شعلة المعرفة في قلب كل طالب",
+    description: "قناديل تضيء الطريق — توحد شعلة المعرفة في قلب كل طالب",
     stages: "رياض أطفال • ابتدائي • متوسط",
     borderColor: "border-violet-400",
     btnColor: "bg-violet-700 hover:bg-violet-800",
-    emoji: "🎓",
+    bgColor: "bg-violet-50",
   },
   {
     id: 2,
     name: "مدارس أجيال المعالي الأهلية",
+    logo: "/schools/agial.png",
     gender: "للبنين والبنات",
     genderColor: "bg-amber-100 text-amber-700",
     description: "سنا جيل يحمل قيم الريادة والتميز والإبداع",
     stages: "رياض أطفال • ابتدائي • متوسط",
     borderColor: "border-amber-400",
     btnColor: "bg-amber-700 hover:bg-amber-800",
-    emoji: "⭐",
+    bgColor: "bg-amber-50",
     featured: true,
   },
   {
     id: 3,
-    name: "مدارس الضاحية الأهلية",
+    name: "مدارس الضاحية الأهلية للبنات",
+    logo: "/schools/aldahia-girls.png",
     gender: "للبنات",
-    genderColor: "bg-pink-100 text-pink-700",
+    genderColor: "bg-blue-100 text-blue-700",
     description: "بيئة تعليمية أمينة ومتكاملة لتنمي أفضل مهارات الطالبات",
     stages: "رياض أطفال • ابتدائي • متوسط",
-    borderColor: "border-teal-400",
-    btnColor: "bg-teal-700 hover:bg-teal-800",
-    emoji: "🌿",
+    borderColor: "border-blue-400",
+    btnColor: "bg-blue-700 hover:bg-blue-800",
+    bgColor: "bg-blue-50",
   },
   {
     id: 4,
-    name: "مدارس الضاحية الأهلية",
+    name: "مدارس الضاحية الأهلية للبنين",
+    logo: "/schools/aldahia-boys.png",
     gender: "للبنين",
-    genderColor: "bg-emerald-100 text-emerald-700",
-    description: "بيئة تعليمية متطورة لطلاب بمناهج أصيل وتقنيات حديثة",
+    genderColor: "bg-red-100 text-red-700",
+    description: "بيئة تعليمية متطورة لطلاب بمناهج أصيلة وتقنيات حديثة",
     stages: "ابتدائي • متوسط • ثانوي",
-    borderColor: "border-emerald-500",
-    btnColor: "bg-emerald-800 hover:bg-emerald-900",
-    emoji: "🏫",
+    borderColor: "border-red-400",
+    btnColor: "bg-red-700 hover:bg-red-800",
+    bgColor: "bg-red-50",
   },
 ];
 
@@ -120,8 +124,8 @@ function LandingPage() {
           style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }}
         />
 
-        <div className="relative mb-6 h-20 w-20 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-2xl backdrop-blur-sm">
-          <CalendarDays className="h-10 w-10 text-white" />
+        <div className="relative mb-4">
+          <img src="/logo.png" alt="مجموعة المالكي التعليمية" className="h-24 w-auto object-contain mx-auto drop-shadow-2xl" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
         </div>
 
         <div className="relative mb-6 inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-white/90 text-sm backdrop-blur-sm">
@@ -186,7 +190,8 @@ function LandingPage() {
             {schools.map((school) => (
               <div
                 key={school.id}
-                className={`relative bg-white rounded-2xl border-2 ${school.borderColor} ${school.featured ? "shadow-2xl scale-105" : "shadow-md"} p-5 flex flex-col gap-3 transition hover:shadow-xl`}
+                className={`relative bg-white rounded-2xl border-2 ${school.borderColor} ${school.featured ? "shadow-2xl scale-105" : "shadow-md"} p-5 flex flex-col gap-3 transition hover:shadow-xl cursor-pointer`}
+                onClick={() => setShowLogin(true)}
               >
                 {school.featured && (
                   <div className="absolute -top-3 right-4 bg-amber-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full">
@@ -194,7 +199,14 @@ function LandingPage() {
                   </div>
                 )}
                 <div className="flex items-start justify-between">
-                  <div className="text-3xl">{school.emoji}</div>
+                  <div className={`h-16 w-16 rounded-xl ${school.bgColor} flex items-center justify-center p-1 border border-gray-100`}>
+                    <img
+                      src={school.logo}
+                      alt={school.name}
+                      className="h-full w-full object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  </div>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${school.genderColor}`}>
                     {school.gender}
                   </span>
@@ -206,7 +218,7 @@ function LandingPage() {
                   <p className="text-xs font-medium text-gray-700">{school.stages}</p>
                 </div>
                 <button
-                  onClick={() => setShowLogin(true)}
+                  onClick={(e) => { e.stopPropagation(); setShowLogin(true); }}
                   className={`w-full mt-1 flex items-center justify-center gap-2 text-white text-sm font-semibold py-2.5 rounded-xl transition ${school.btnColor}`}
                 >
                   الدخول للنظام
@@ -217,7 +229,7 @@ function LandingPage() {
           </div>
 
           <div className="mt-8 flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-xl px-5 py-4">
-            <span className="text-teal-500 text-lg">⭐</span>
+            <span className="text-teal-500 text-lg">🔒</span>
             <div>
               <p className="font-semibold text-teal-800 text-sm">بيانات منفصلة لكل مدرسة</p>
               <p className="text-teal-600 text-xs mt-0.5">كل مدرسة تعمل بقاعدة بيانات مستقلة — جداولها ومعلموها وتقاريرها معزولة تماماً</p>

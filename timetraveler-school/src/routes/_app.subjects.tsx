@@ -12,11 +12,12 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, FileSpreadsheet, Download } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SearchBar, ConfirmDelete } from "@/components/page-helpers";
 import { STAGES, SUBJECT_COLORS, stageLabel } from "@/lib/constants";
 import type { EducationStage } from "@/lib/constants";
+import { downloadExcel, downloadTemplate } from "@/lib/excel-export";
 
 export const Route = createFileRoute("/_app/subjects")({ component: SubjectsPage });
 
@@ -73,7 +74,17 @@ function SubjectsPage() {
         </Dialog>
       } />
       <Card><CardContent className="p-4">
-        <div className="mb-4"><SearchBar value={search} onChange={setSearch} placeholder="بحث بالاسم أو الكود..." /></div>
+        <div className="mb-4 flex flex-wrap gap-2 items-start justify-between">
+          <SearchBar value={search} onChange={setSearch} placeholder="بحث بالاسم أو الكود..." />
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(["اسم المادة","الكود","المرحلة","الحصص الأسبوعية","تحتاج معمل","حصة مزدوجة","أساسية"], "المواد")}>
+              <Download className="h-4 w-4 ms-1" /> قالب
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => downloadExcel(filtered.map((s) => ({ "الاسم": s.name, "الكود": s.code ?? "", "المرحلة": stageLabel(s.stage), "الحصص الأسبوعية": s.weekly_lessons, "تحتاج معمل": s.needs_lab ? "نعم" : "لا", "حصة مزدوجة": s.double_period ? "نعم" : "لا", "أساسية": s.is_core ? "نعم" : "لا" })), "المواد_الدراسية", "المواد")}>
+              <FileSpreadsheet className="h-4 w-4 ms-1" /> تصدير Excel
+            </Button>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader><TableRow>

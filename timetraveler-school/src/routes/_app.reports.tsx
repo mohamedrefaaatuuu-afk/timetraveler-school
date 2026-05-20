@@ -7,10 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Printer, Download, FileText, Loader2 } from "lucide-react";
+import { Printer, Download, FileText, Loader2, FileSpreadsheet } from "lucide-react";
 import { PageHeader } from "@/components/page-helpers";
-import { DAYS, type DayOfWeek } from "@/lib/constants";
+import { DAYS, STAGES, stageLabel, type DayOfWeek, type EducationStage } from "@/lib/constants";
 import { nodeToPdf } from "@/lib/pdf-export";
+import { downloadScheduleExcel } from "@/lib/excel-export";
+import { getSchoolLogo } from "@/lib/school-branding";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/reports")({ component: ReportsPage });
@@ -20,14 +22,17 @@ interface Entry {
   class_id: string; teacher_id: string;
   subjects: { name: string; color: string } | null;
   teachers: { full_name: string } | null;
-  classes: { name: string } | null;
+  classes: { name: string; stage?: EducationStage } | null;
   classrooms: { name: string } | null;
 }
 
+interface ClassItem { id: string; name: string; stage: EducationStage; }
+
 function ReportsPage() {
-  const { schoolId } = useAuth();
-  const [viewType, setViewType] = useState<"class" | "teacher">("class");
+  const { schoolId, school: authSchool } = useAuth();
+  const [viewType, setViewType] = useState<"class" | "teacher" | "stage">("class");
   const [selectedId, setSelectedId] = useState("");
+  const [stageFilter, setStageFilter] = useState<EducationStage | "all">("all");
   const [busy, setBusy] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +49,7 @@ function ReportsPage() {
 
   const { data: classes = [] } = useQuery({
     queryKey: ["classes-mini", schoolId], enabled: !!schoolId,
-    queryFn: async () => (await supabase.from("classes").select("id,name").eq("school_id", schoolId!).order("name")).data ?? [],
+    queryFn: async () => (await supabase.from("classes").select("id,name,stage").eq("school_id", schoolId!).order("name")).data ?? [] as ClassItem[],
   });
   const { data: teachers = [] } = useQuery({
     queryKey: ["teachers-mini", schoolId], enabled: !!schoolId,
@@ -52,18 +57,55 @@ function ReportsPage() {
   });
   const { data: entries = [] } = useQuery({
     queryKey: ["schedule", schoolId], enabled: !!schoolId,
-    queryFn: async () => (await supabase.from("schedule_entries").select("*, subjects(name,color), teachers(full_name), classrooms(name), classes(name)").eq("school_id", schoolId!)).data as unknown as Entry[] ?? [],
+    queryFn: async () => (await supabase.from("schedule_entries").select("*, subjects(name,color), teachers(full_name), classrooms(name), classes(name,stage)").eq("school_id", schoolId!)).data as unknown as Entry[] ?? [],
   });
 
-  const list = viewType === "class" ? classes : teachers;
+  const filteredClasses = viewType === "stage" && stageFilter !== "all"
+    ? (classes as ClassItem[]).filter((c) => c.stage === stageFilter)
+    : classes as ClassItem[];
+
+  const list = viewType === "teacher" ? teachers : filteredClasses;
   const currentId = selectedId || list[0]?.id || "";
   const headerName = list.find((x) => x.id === currentId);
   const titleName = headerName ? ("name" in headerName ? headerName.name : headerName.full_name) : "";
 
-  const filterFor = (id: string) => entries.filter((e) => viewType === "class" ? e.class_id === id : e.teacher_id === id);
+  const filterFor = (id: string) => entries.filter((e) => viewType === "teacher" ? e.teacher_id === id : e.class_id === id);
   const filtered = filterFor(currentId);
   const grid: Record<string, Entry | undefined> = {};
   filtered.forEach((e) => { grid[`${e.day}:${e.period_no}`] = e; });
+
+  const schoolName = school?.name ?? authSchool?.name ?? "المدرسة";
+  const localLogoUrl = getSchoolLogo(schoolName, school?.logo_url);
+  const dayLabels = Object.fromEntries(DAYS.map((d) => [d.value, d.label]));
+
+  const exportExcel = () => {
+    if (!currentId) { toast.error("اختر فصلاً أو معلماً"); return; }
+    const exportEntries = filtered.map((e) => ({
+      day: e.day, period_no: e.period_no,
+      subject_name: e.subjects?.name ?? "",
+      teacher_name: e.teachers?.full_name ?? "",
+      class_name: e.classes?.name ?? "",
+      classroom_name: e.classrooms?.name,
+    }));
+    downloadScheduleExcel(exportEntries, workingDays, periodsPerDay, dayLabels, titleName, schoolName);
+  };
+
+  const exportExcelBatch = () => {
+    const items = list;
+    if (!items.length) { toast.error("لا توجد بيانات"); return; }
+    for (const it of items) {
+      const nm = "name" in it ? it.name : it.full_name;
+      const itEntries = filterFor(it.id).map((e) => ({
+        day: e.day, period_no: e.period_no,
+        subject_name: e.subjects?.name ?? "",
+        teacher_name: e.teachers?.full_name ?? "",
+        class_name: e.classes?.name ?? "",
+        classroom_name: e.classrooms?.name,
+      }));
+      downloadScheduleExcel(itEntries, workingDays, periodsPerDay, dayLabels, nm, schoolName);
+    }
+    toast.success(`تم تصدير ${items.length} جدول Excel`);
+  };
 
   const exportCsv = () => {
     const head = ["اليوم", ...Array.from({ length: periodsPerDay }, (_, i) => `حصة ${i + 1}`)];
@@ -72,7 +114,7 @@ function ReportsPage() {
       const row = [DAYS.find((x) => x.value === d)?.label ?? d];
       for (let p = 1; p <= periodsPerDay; p++) {
         const e = grid[`${d}:${p}`];
-        const cell = e ? `${e.subjects?.name ?? ""} - ${viewType === "class" ? e.teachers?.full_name ?? "" : e.classes?.name ?? ""}` : "";
+        const cell = e ? `${e.subjects?.name ?? ""} - ${viewType === "teacher" ? e.classes?.name ?? "" : e.teachers?.full_name ?? ""}` : "";
         row.push(`"${cell.replace(/"/g, '""')}"`);
       }
       lines.push(row.join(","));
@@ -89,10 +131,10 @@ function ReportsPage() {
     setBusy(true);
     try {
       await nodeToPdf(printRef.current, {
-        title: viewType === "class" ? `جدول الفصل: ${titleName}` : `جدول المعلم: ${titleName}`,
+        title: viewType === "teacher" ? `جدول المعلم: ${titleName}` : `جدول الفصل: ${titleName}`,
         subtitle: `الأسبوع الدراسي • ${periodsPerDay} حصص يومياً`,
-        schoolName: school?.name ?? "",
-        logoUrl: school?.logo_url ?? null,
+        schoolName,
+        logoUrl: localLogoUrl,
       }, `جدول-${titleName}.pdf`);
       toast.success("تم إنشاء ملف PDF");
     } catch (e) { toast.error((e as Error).message); }
@@ -103,39 +145,25 @@ function ReportsPage() {
     setBusy(true);
     try {
       const items = list;
-      if (!items.length) { toast.error("لا توجد بيانات للتصدير"); return; }
+      if (!items.length) { toast.error("لا توجد بيانات"); return; }
       const host = document.createElement("div");
-      host.style.position = "fixed";
-      host.style.left = "-10000px";
-      host.style.top = "0";
-      host.style.width = "1200px";
-      host.style.background = "#fff";
+      host.style.position = "fixed"; host.style.left = "-10000px"; host.style.top = "0";
+      host.style.width = "1200px"; host.style.background = "#fff";
       document.body.appendChild(host);
       try {
-        for (let i = 0; i < items.length; i++) {
-          const it = items[i];
-          const id = it.id;
+        for (const it of items) {
           const nm = "name" in it ? it.name : it.full_name;
           host.innerHTML = "";
-          renderTable(host, {
-            entries: filterFor(id),
-            periodsPerDay,
-            workingDays,
-            viewType,
-            label: nm,
-          });
-          // small await for layout
+          renderTable(host, { entries: filterFor(it.id), periodsPerDay, workingDays, viewType: viewType === "teacher" ? "teacher" : "class", label: nm, schoolName, logoUrl: localLogoUrl });
           await new Promise((r) => requestAnimationFrame(() => r(null)));
           await nodeToPdf(host, {
-            title: viewType === "class" ? `جدول الفصل: ${nm}` : `جدول المعلم: ${nm}`,
+            title: viewType === "teacher" ? `جدول المعلم: ${nm}` : `جدول الفصل: ${nm}`,
             subtitle: `الأسبوع الدراسي • ${periodsPerDay} حصص يومياً`,
-            schoolName: school?.name ?? "",
-            logoUrl: school?.logo_url ?? null,
+            schoolName,
+            logoUrl: localLogoUrl,
           }, `جدول-${nm}.pdf`);
         }
-      } finally {
-        document.body.removeChild(host);
-      }
+      } finally { document.body.removeChild(host); }
       toast.success(`تم تصدير ${items.length} جدول`);
     } catch (e) { toast.error((e as Error).message); }
     finally { setBusy(false); }
@@ -143,40 +171,91 @@ function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="التقارير والطباعة" description="تصدير الجداول إلى PDF احترافي وطباعتها" />
+      <PageHeader title="التقارير والطباعة" description="تصدير الجداول إلى PDF واكسل وطباعتها" />
       <Card className="mb-4 print:hidden"><CardContent className="p-4 flex flex-wrap items-center gap-3">
-        <Tabs value={viewType} onValueChange={(v) => { setViewType(v as never); setSelectedId(""); }}>
+        <Tabs value={viewType} onValueChange={(v) => { setViewType(v as never); setSelectedId(""); setStageFilter("all"); }}>
           <TabsList>
             <TabsTrigger value="class">جدول فصل</TabsTrigger>
             <TabsTrigger value="teacher">جدول معلم</TabsTrigger>
+            <TabsTrigger value="stage">حسب المرحلة</TabsTrigger>
           </TabsList>
         </Tabs>
+
+        {viewType === "stage" && (
+          <Select value={stageFilter} onValueChange={(v) => { setStageFilter(v as EducationStage | "all"); setSelectedId(""); }}>
+            <SelectTrigger className="max-w-[180px]"><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع المراحل</SelectItem>
+              {STAGES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+
         <Select value={currentId} onValueChange={setSelectedId}>
           <SelectTrigger className="max-w-[260px]"><SelectValue /></SelectTrigger>
           <SelectContent>{list.map((x) => <SelectItem key={x.id} value={x.id}>{"name" in x ? x.name : x.full_name}</SelectItem>)}</SelectContent>
         </Select>
+
         <Button onClick={exportPdf} disabled={busy || !currentId}>
-          {busy ? <Loader2 className="ms-2 h-4 w-4 animate-spin" /> : <FileText className="ms-2 h-4 w-4" />} تصدير PDF
+          {busy ? <Loader2 className="ms-2 h-4 w-4 animate-spin" /> : <FileText className="ms-2 h-4 w-4" />} PDF
         </Button>
         <Button variant="secondary" onClick={exportPdfBatch} disabled={busy || !list.length}>
-          <FileText className="ms-2 h-4 w-4" /> PDF لكل {viewType === "class" ? "الفصول" : "المعلمين"}
+          <FileText className="ms-2 h-4 w-4" /> PDF للكل
+        </Button>
+        <Button variant="outline" onClick={exportExcel} disabled={!currentId}>
+          <FileSpreadsheet className="ms-2 h-4 w-4" /> Excel
+        </Button>
+        <Button variant="outline" onClick={exportExcelBatch} disabled={!list.length}>
+          <FileSpreadsheet className="ms-2 h-4 w-4" /> Excel للكل
         </Button>
         <Button variant="outline" onClick={() => window.print()}><Printer className="ms-2 h-4 w-4" /> طباعة</Button>
         <Button variant="outline" onClick={exportCsv}><Download className="ms-2 h-4 w-4" /> CSV</Button>
       </CardContent></Card>
 
       <div ref={printRef} className="bg-white text-black p-6 rounded-lg shadow print:shadow-none print:rounded-none">
-        <div className="text-center mb-4">
-          <h2 className="text-2xl font-bold">{school?.name ?? "الجدول الدراسي"}</h2>
-          <p className="text-lg mt-1">{viewType === "class" ? "جدول الفصل" : "جدول المعلم"}: <span className="font-semibold">{titleName}</span></p>
+        {/* Professional print header */}
+        <div className="text-center mb-4 pb-4 border-b border-gray-300">
+          <div className="flex items-center justify-center gap-4 mb-2">
+            {localLogoUrl && (
+              <img src={localLogoUrl} alt={schoolName} className="h-16 w-16 object-contain" />
+            )}
+            <div>
+              <h1 className="text-2xl font-extrabold">{schoolName}</h1>
+              <p className="text-base text-gray-600 mt-0.5">مجموعة المالكي التعليمية</p>
+            </div>
+          </div>
+          <div className="mt-2 bg-gray-100 rounded-lg py-2 px-4 inline-block">
+            <p className="text-lg font-bold">
+              {viewType === "teacher" ? "جدول المعلم" : viewType === "stage" ? `جدول مرحلة: ${stageLabel(stageFilter as EducationStage)}` : "جدول الفصل"}:{" "}
+              <span className="text-primary">{titleName}</span>
+            </p>
+            <p className="text-sm text-gray-500">الأسبوع الدراسي • {periodsPerDay} حصص يومياً • {workingDays.length} أيام</p>
+          </div>
         </div>
+
         <ScheduleTable
           entries={filtered}
           periodsPerDay={periodsPerDay}
           workingDays={workingDays}
-          viewType={viewType}
+          viewType={viewType === "teacher" ? "teacher" : "class"}
         />
       </div>
+
+      {/* Stage overview section */}
+      {viewType === "stage" && filteredClasses.length > 1 && (
+        <div className="mt-4 space-y-4 print:hidden">
+          <h3 className="font-semibold text-base">
+            جميع فصول {stageFilter !== "all" ? stageLabel(stageFilter as EducationStage) : "المراحل"} ({filteredClasses.length} فصل)
+          </h3>
+          <div className="flex gap-2 flex-wrap">
+            {(filteredClasses as ClassItem[]).map((cls) => (
+              <Button key={cls.id} size="sm" variant={currentId === cls.id ? "default" : "outline"} onClick={() => setSelectedId(cls.id)}>
+                {cls.name} ({filterFor(cls.id).length} حصة)
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -217,9 +296,11 @@ function ScheduleTable({ entries, periodsPerDay, workingDays, viewType }: { entr
   );
 }
 
-/** Imperative renderer for offscreen batch capture (avoids ReactDOM.render in v19). */
-function renderTable(host: HTMLElement, opts: { entries: Entry[]; periodsPerDay: number; workingDays: DayOfWeek[]; viewType: "class" | "teacher"; label: string }) {
-  const { entries, periodsPerDay, workingDays, viewType, label } = opts;
+function renderTable(host: HTMLElement, opts: {
+  entries: Entry[]; periodsPerDay: number; workingDays: DayOfWeek[];
+  viewType: "class" | "teacher"; label: string; schoolName: string; logoUrl: string | null;
+}) {
+  const { entries, periodsPerDay, workingDays, viewType, label, schoolName, logoUrl } = opts;
   const grid: Record<string, Entry | undefined> = {};
   entries.forEach((e) => { grid[`${e.day}:${e.period_no}`] = e; });
   const dayLabel = (d: DayOfWeek) => DAYS.find((x) => x.value === d)?.label ?? d;
@@ -241,11 +322,22 @@ function renderTable(host: HTMLElement, opts: { entries: Entry[]; periodsPerDay:
     }).join("");
     return `<tr><td style="border:1px solid #9ca3af;padding:8px;font-weight:700;background:#f9fafb;text-align:center">${esc(dayLabel(d))}</td>${tds}</tr>`;
   }).join("");
+
+  const logoHtml = logoUrl ? `<img src="${logoUrl}" style="height:60px;width:60px;object-fit:contain;margin-inline-end:12px;" />` : "";
+
   host.innerHTML = `
     <div dir="rtl" style="font-family:Cairo,Tajawal,sans-serif;padding:24px;background:#fff;color:#000">
-      <div style="text-align:center;margin-bottom:16px">
-        <h2 style="font-size:22px;font-weight:700;margin:0">${esc(label)}</h2>
-        <p style="margin-top:4px">${viewType === "class" ? "جدول الفصل" : "جدول المعلم"}</p>
+      <div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e5e7eb">
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px">
+          ${logoHtml}
+          <div>
+            <h1 style="font-size:22px;font-weight:800;margin:0">${esc(schoolName)}</h1>
+            <p style="margin:2px 0;color:#6b7280;font-size:13px">مجموعة المالكي التعليمية</p>
+          </div>
+        </div>
+        <div style="background:#f3f4f6;border-radius:8px;padding:6px 16px;display:inline-block">
+          <p style="margin:0;font-size:16px;font-weight:700">${viewType === "class" ? "جدول الفصل" : "جدول المعلم"}: ${esc(label)}</p>
+        </div>
       </div>
       <table style="width:100%;border-collapse:collapse;border:1px solid #9ca3af;font-size:13px">
         <thead><tr><th style="border:1px solid #9ca3af;padding:8px;background:#f3f4f6">اليوم / الحصة</th>${ths}</tr></thead>
