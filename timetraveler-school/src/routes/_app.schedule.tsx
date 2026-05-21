@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,56 @@ function SchedulePage() {
   });
   const periodsPerDay = settings?.periods_per_day ?? 7;
   const workingDays: DayOfWeek[] = (settings?.working_days as DayOfWeek[]) ?? ["sunday","monday","tuesday","wednesday","thursday"];
+  const breakAfterPeriod = settings?.break_after_period ?? 0;
+  const periodDurationMin = settings?.period_duration_min ?? 45;
+  const breakDurationMin = settings?.break_duration_min ?? 15;
+  const firstPeriodStart = (settings?.first_period_start as string | undefined)?.slice(0, 5) ?? "08:00";
+
+  interface PrayerBreak { id: string; label: string; time: string; duration_min: number; }
+  const [prayerBreaks, setPrayerBreaks] = useState<PrayerBreak[]>([]);
+  useEffect(() => {
+    if (!schoolId) return;
+    const stored = localStorage.getItem(`prayer_breaks_${schoolId}`);
+    if (stored) { try { setPrayerBreaks(JSON.parse(stored)); } catch { /* ignore */ } }
+  }, [schoolId]);
+
+  // Calculate period times (minutes from midnight)
+  const periodTimes = useMemo(() => {
+    const [h, m] = firstPeriodStart.split(":").map(Number);
+    let cur = h * 60 + m;
+    const times: { start: number; end: number }[] = [];
+    for (let p = 1; p <= periodsPerDay; p++) {
+      times.push({ start: cur, end: cur + periodDurationMin });
+      cur += periodDurationMin;
+      if (breakAfterPeriod > 0 && p === breakAfterPeriod) cur += breakDurationMin;
+    }
+    return times;
+  }, [firstPeriodStart, periodDurationMin, periodsPerDay, breakAfterPeriod, breakDurationMin]);
+
+  type ScheduleCol = { type: "period"; num: number } | { type: "break"; label: string; duration: number; variant: "amber" | "green" };
+  const scheduleColumns = useMemo<ScheduleCol[]>(() => {
+    const cols: ScheduleCol[] = [];
+    for (let p = 1; p <= periodsPerDay; p++) {
+      cols.push({ type: "period", num: p });
+      if (breakAfterPeriod > 0 && p === breakAfterPeriod) {
+        cols.push({ type: "break", label: "فسحة", duration: breakDurationMin, variant: "amber" });
+      }
+      if (periodTimes[p - 1]) {
+        const periodEnd = periodTimes[p - 1].end;
+        const nextStart = periodTimes[p]?.start ?? Infinity;
+        for (const pb of prayerBreaks) {
+          const [ph, pm] = pb.time.split(":").map(Number);
+          const pbMins = ph * 60 + pm;
+          if (pbMins >= periodEnd && (p === periodsPerDay || pbMins < nextStart)) {
+            cols.push({ type: "break", label: pb.label, duration: pb.duration_min, variant: "green" });
+          }
+        }
+      }
+    }
+    return cols;
+  }, [periodsPerDay, breakAfterPeriod, breakDurationMin, prayerBreaks, periodTimes]);
+
+  const fmtTime = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
 
   const { data: classes = [] } = useQuery({
     queryKey: ["classes-mini", schoolId], enabled: !!schoolId,
@@ -242,21 +292,45 @@ function SchedulePage() {
             <table className="w-full text-sm border-separate border-spacing-1">
               <thead>
                 <tr>
-                  <th className="p-2 text-center bg-muted rounded-md min-w-[80px]">اليوم \ الحصة</th>
-                  {Array.from({ length: periodsPerDay }, (_, i) => i + 1).map((p) => (
-                    <th key={p} className="p-2 text-center bg-muted rounded-md min-w-[120px]">حصة {p}</th>
-                  ))}
+                  <th className="p-2 text-center bg-muted rounded-md min-w-[70px] sticky right-0 z-10">اليوم</th>
+                  {scheduleColumns.map((col, ci) =>
+                    col.type === "period" ? (
+                      <th key={ci} className="p-1.5 text-center bg-muted rounded-md min-w-[110px]">
+                        <div className="font-semibold">حصة {col.num}</div>
+                        {periodTimes[col.num - 1] && (
+                          <div className="text-[10px] font-normal text-muted-foreground">
+                            {fmtTime(periodTimes[col.num - 1].start)}
+                          </div>
+                        )}
+                      </th>
+                    ) : (
+                      <th key={ci} className={`p-1.5 text-center rounded-md min-w-[60px] ${col.variant === "amber" ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}>
+                        <div className="text-xs font-bold">{col.label}</div>
+                        <div className="text-[10px] font-normal">{col.duration} د</div>
+                      </th>
+                    )
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {workingDays.map((d) => (
                   <tr key={d}>
-                    <td className="p-2 text-center bg-muted rounded-md font-medium">{DAYS.find((x) => x.value === d)?.label}</td>
-                    {Array.from({ length: periodsPerDay }, (_, i) => i + 1).map((p) => {
+                    <td className="p-2 text-center bg-muted rounded-md font-medium sticky right-0 z-10">{DAYS.find((x) => x.value === d)?.label}</td>
+                    {scheduleColumns.map((col, ci) => {
+                      if (col.type === "break") {
+                        return (
+                          <td key={ci} className={`p-1 text-center rounded-md ${col.variant === "amber" ? "bg-amber-50/80" : "bg-green-50/80"}`}>
+                            <div className={`text-[11px] font-semibold ${col.variant === "amber" ? "text-amber-700" : "text-green-700"}`}>
+                              {col.variant === "amber" ? "☕" : "🕌"} {col.label}
+                            </div>
+                          </td>
+                        );
+                      }
+                      const p = col.num;
                       const e = grid[`${d}:${p}`];
                       const conf = e ? conflictKeys.has(e.id) : false;
                       return (
-                        <td key={p} className="p-1 align-top">
+                        <td key={ci} className="p-1 align-top">
                           {e ? (
                             <button
                               onClick={() => setEditing({ day: d, period: p, entry: e })}
