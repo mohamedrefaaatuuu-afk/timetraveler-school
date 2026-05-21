@@ -18,6 +18,7 @@ import { PageHeader, SearchBar, ConfirmDelete } from "@/components/page-helpers"
 import { STAGES, SUBJECT_COLORS, stageLabel } from "@/lib/constants";
 import type { EducationStage } from "@/lib/constants";
 import { downloadExcel, downloadTemplate } from "@/lib/excel-export";
+import { ExcelImportDialog } from "@/components/excel-import-dialog";
 
 export const Route = createFileRoute("/_app/subjects")({ component: SubjectsPage });
 
@@ -76,13 +77,39 @@ function SubjectsPage() {
       <Card><CardContent className="p-4">
         <div className="mb-4 flex flex-wrap gap-2 items-start justify-between">
           <SearchBar value={search} onChange={setSearch} placeholder="بحث بالاسم أو الكود..." />
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => downloadTemplate(["اسم المادة","الكود","المرحلة","الحصص الأسبوعية","تحتاج معمل","حصة مزدوجة","أساسية"], "المواد")}>
               <Download className="h-4 w-4 ms-1" /> قالب
             </Button>
             <Button variant="outline" size="sm" onClick={() => downloadExcel(filtered.map((s) => ({ "الاسم": s.name, "الكود": s.code ?? "", "المرحلة": stageLabel(s.stage), "الحصص الأسبوعية": s.weekly_lessons, "تحتاج معمل": s.needs_lab ? "نعم" : "لا", "حصة مزدوجة": s.double_period ? "نعم" : "لا", "أساسية": s.is_core ? "نعم" : "لا" })), "المواد_الدراسية", "المواد")}>
               <FileSpreadsheet className="h-4 w-4 ms-1" /> تصدير Excel
             </Button>
+            <ExcelImportDialog
+              entityName="مواد"
+              columns={[
+                { header: "اسم المادة", field: "name", required: true },
+                { header: "الكود", field: "code" },
+                { header: "المرحلة", field: "stage", transform: (v) => ({ "ابتدائي": "primary", "إعدادي": "preparatory", "ثانوي": "secondary" })[String(v)] ?? null },
+                { header: "الحصص الأسبوعية", field: "weekly_lessons", transform: (v) => Number(v) || 4 },
+                { header: "تحتاج معمل", field: "needs_lab", transform: (v) => String(v) === "نعم" },
+                { header: "حصة مزدوجة", field: "double_period", transform: (v) => String(v) === "نعم" },
+                { header: "أساسية", field: "is_core", transform: (v) => String(v) !== "لا" },
+              ]}
+              previewColumns={["اسم المادة", "الكود", "المرحلة", "الحصص الأسبوعية"]}
+              templateNote="المرحلة: ابتدائي أو إعدادي أو ثانوي (اتركها فارغة للكل)"
+              onImport={async (rows) => {
+                const { error } = await supabase.from("subjects").insert(
+                  rows.map((r) => ({
+                    ...r,
+                    school_id: schoolId,
+                    color: SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)],
+                    priority: 5,
+                  })) as never
+                );
+                if (error) throw error;
+                qc.invalidateQueries({ queryKey: ["subjects"] });
+              }}
+            />
           </div>
         </div>
         <div className="overflow-x-auto">

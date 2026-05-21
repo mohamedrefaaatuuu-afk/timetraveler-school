@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { PageHeader, SearchBar, ConfirmDelete } from "@/components/page-helpers";
 import { TeacherAvailabilityDialog } from "@/components/teacher-availability-dialog";
 import { downloadExcel, downloadTemplate } from "@/lib/excel-export";
+import { ExcelImportDialog } from "@/components/excel-import-dialog";
 
 export const Route = createFileRoute("/_app/teachers")({ component: TeachersPage });
 
@@ -94,13 +95,40 @@ function TeachersPage() {
         <CardContent className="p-4">
           <div className="mb-4 flex flex-wrap gap-2 items-start justify-between">
             <SearchBar value={search} onChange={setSearch} placeholder="بحث بالاسم أو الرقم أو التخصص..." />
-            <div className="flex gap-2 shrink-0">
+            <div className="flex gap-2 shrink-0 flex-wrap">
               <Button variant="outline" size="sm" onClick={() => downloadTemplate(["الاسم الكامل","رقم الموظف","التخصص","البريد الإلكتروني","الهاتف","الحد اليومي","الحد الأسبوعي"], "المعلمون")}>
                 <Download className="h-4 w-4 ms-1" /> قالب
               </Button>
               <Button variant="outline" size="sm" onClick={() => downloadExcel(filtered.map((t) => ({ "الاسم": t.full_name, "رقم الموظف": t.employee_no ?? "", "التخصص": t.specialization ?? "", "البريد": t.email ?? "", "الهاتف": t.phone ?? "", "الحد اليومي": t.max_daily_lessons, "الحد الأسبوعي": t.max_weekly_lessons, "الحالة": t.status === "active" ? "نشط" : "غير نشط" })), "المعلمون", "المعلمون")}>
                 <FileSpreadsheet className="h-4 w-4 ms-1" /> تصدير Excel
               </Button>
+              <ExcelImportDialog
+                entityName="معلمين"
+                columns={[
+                  { header: "الاسم الكامل", field: "full_name", required: true },
+                  { header: "رقم الموظف", field: "employee_no" },
+                  { header: "التخصص", field: "specialization" },
+                  { header: "البريد الإلكتروني", field: "email" },
+                  { header: "الهاتف", field: "phone" },
+                  { header: "الحد اليومي", field: "max_daily_lessons", transform: (v) => Number(v) || 6 },
+                  { header: "الحد الأسبوعي", field: "max_weekly_lessons", transform: (v) => Number(v) || 24 },
+                ]}
+                previewColumns={["الاسم الكامل", "رقم الموظف", "التخصص", "البريد الإلكتروني"]}
+                templateNote="استخدم نفس رؤوس الأعمدة الموجودة في القالب"
+                onImport={async (rows) => {
+                  const { error } = await supabase.from("teachers").insert(
+                    rows.map((r) => ({
+                      ...r,
+                      school_id: schoolId,
+                      status: "active",
+                      max_daily_lessons: Number(r.max_daily_lessons) || 6,
+                      max_weekly_lessons: Number(r.max_weekly_lessons) || 24,
+                    })) as never
+                  );
+                  if (error) throw error;
+                  qc.invalidateQueries({ queryKey: ["teachers"] });
+                }}
+              />
             </div>
           </div>
           <div className="overflow-x-auto">

@@ -17,6 +17,7 @@ import { PageHeader, SearchBar, ConfirmDelete } from "@/components/page-helpers"
 import { STAGES, stageLabel } from "@/lib/constants";
 import type { EducationStage } from "@/lib/constants";
 import { downloadExcel, downloadTemplate } from "@/lib/excel-export";
+import { ExcelImportDialog } from "@/components/excel-import-dialog";
 
 export const Route = createFileRoute("/_app/classes")({ component: ClassesPage });
 
@@ -68,13 +69,32 @@ function ClassesPage() {
       <Card><CardContent className="p-4">
         <div className="mb-4 flex flex-wrap gap-2 items-start justify-between">
           <SearchBar value={search} onChange={setSearch} placeholder="بحث باسم الفصل..." />
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => downloadTemplate(["اسم الفصل","المرحلة","الصف","عدد الطلاب","الحصص اليومية"], "الفصول")}>
               <Download className="h-4 w-4 ms-1" /> قالب
             </Button>
             <Button variant="outline" size="sm" onClick={() => downloadExcel(filtered.map((c) => ({ "الاسم": c.name, "المرحلة": stageLabel(c.stage), "الصف": c.grade_level ?? "", "عدد الطلاب": c.students_count, "الحصص اليومية": c.daily_lessons })), "الفصول", "الفصول")}>
               <FileSpreadsheet className="h-4 w-4 ms-1" /> تصدير Excel
             </Button>
+            <ExcelImportDialog
+              entityName="فصول"
+              columns={[
+                { header: "اسم الفصل", field: "name", required: true },
+                { header: "المرحلة", field: "stage", transform: (v) => ({ "ابتدائي": "primary", "إعدادي": "preparatory", "ثانوي": "secondary" })[String(v)] ?? "primary" },
+                { header: "الصف", field: "grade_level", transform: (v) => Number(v) || null },
+                { header: "عدد الطلاب", field: "students_count", transform: (v) => Number(v) || 30 },
+                { header: "الحصص اليومية", field: "daily_lessons", transform: (v) => Number(v) || 7 },
+              ]}
+              previewColumns={["اسم الفصل", "المرحلة", "الصف", "عدد الطلاب"]}
+              templateNote="المرحلة: ابتدائي أو إعدادي أو ثانوي"
+              onImport={async (rows) => {
+                const { error } = await supabase.from("classes").insert(
+                  rows.map((r) => ({ ...r, school_id: schoolId })) as never
+                );
+                if (error) throw error;
+                qc.invalidateQueries({ queryKey: ["classes"] });
+              }}
+            />
           </div>
         </div>
         <div className="overflow-x-auto">
