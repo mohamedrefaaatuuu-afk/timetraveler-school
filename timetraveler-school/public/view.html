@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>جدول المدرسة</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f4f6f9; color: #1a1a2e; direction: rtl; }
+  .header { background: linear-gradient(135deg, #0d3d30 0%, #166651 100%); color: white; padding: 16px 24px; display: flex; align-items: center; gap: 16px; justify-content: space-between; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .school-logo { height: 56px; width: 56px; object-fit: contain; background: white; border-radius: 12px; padding: 4px; }
+  .school-name { font-size: 1.2rem; font-weight: 700; line-height: 1.3; }
+  .school-sub { font-size: 0.75rem; opacity: 0.75; margin-top: 2px; }
+  .controls { background: white; border-bottom: 1px solid #e2e8f0; padding: 12px 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .controls select { border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; background: white; cursor: pointer; min-width: 180px; }
+  .controls .tab-group { display: flex; gap: 4px; }
+  .tab-btn { border: 1px solid #e2e8f0; background: white; border-radius: 8px; padding: 6px 14px; font-size: 0.82rem; cursor: pointer; transition: all 0.15s; color: #4a5568; }
+  .tab-btn.active { background: #166651; color: white; border-color: #166651; }
+  .print-btn { margin-right: auto; border: 1px solid #166651; color: #166651; background: white; border-radius: 8px; padding: 6px 16px; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; }
+  .print-btn:hover { background: #166651; color: white; }
+  .main { padding: 20px 24px; }
+  .loading { text-align: center; padding: 60px; color: #718096; font-size: 0.9rem; }
+  .loading .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #166651; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg { text-align: center; padding: 40px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 12px; color: #c53030; }
+  .schedule-table { width: 100%; border-collapse: separate; border-spacing: 4px; font-size: 0.82rem; }
+  .schedule-table th { background: #edf2f7; padding: 8px 6px; text-align: center; border-radius: 6px; white-space: nowrap; font-weight: 600; }
+  .schedule-table th.break-header { padding: 8px 4px; border-radius: 6px; font-size: 0.75rem; }
+  .schedule-table th.break-amber { background: #fef3c7; color: #92400e; }
+  .schedule-table th.break-green { background: #d1fae5; color: #065f46; }
+  .schedule-table td { padding: 4px; vertical-align: top; }
+  .schedule-table td.day-cell { background: #edf2f7; padding: 8px 6px; text-align: center; font-weight: 600; border-radius: 6px; white-space: nowrap; }
+  .schedule-table td.break-cell { border-radius: 6px; text-align: center; padding: 4px; font-size: 0.75rem; font-weight: 600; }
+  .schedule-table td.break-amber { background: #fffbeb; color: #b45309; }
+  .schedule-table td.break-green { background: #f0fdf4; color: #16a34a; }
+  .entry-card { background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px; min-height: 58px; border-right-width: 4px; }
+  .entry-card .subject { font-weight: 600; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-card .teacher { font-size: 0.72rem; color: #718096; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-card .room { font-size: 0.68rem; color: #a0aec0; margin-top: 1px; }
+  .empty-cell { border: 1px dashed #e2e8f0; border-radius: 6px; min-height: 58px; }
+  .time-label { font-size: 0.65rem; color: #a0aec0; font-weight: 400; display: block; margin-top: 2px; }
+  .overflow-x { overflow-x: auto; border-radius: 10px; background: white; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .meta-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 12px; font-size: 0.75rem; }
+  @media print {
+    .controls { display: none; }
+    .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .entry-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .schedule-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-right">
+    <img id="school-logo" class="school-logo" src="" alt="" onerror="this.style.display='none'" style="display:none"/>
+    <div>
+      <div class="school-name" id="school-name">جدول المدرسة</div>
+      <div class="school-sub">مجموعة المالكي التعليمية</div>
+    </div>
+  </div>
+  <div class="meta-badge" id="meta-info">جاري التحميل...</div>
+</div>
+
+<div class="controls" id="controls" style="display:none">
+  <div class="tab-group">
+    <button class="tab-btn active" id="tab-class" onclick="switchView('class')">حسب الفصل</button>
+    <button class="tab-btn" id="tab-teacher" onclick="switchView('teacher')">حسب المعلم</button>
+  </div>
+  <select id="entity-select" onchange="renderSchedule()">
+    <option value="">اختر...</option>
+  </select>
+  <button class="print-btn" onclick="window.print()">🖨 طباعة</button>
+</div>
+
+<div class="main">
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div>جاري تحميل الجدول...</div>
+  </div>
+  <div id="error-div" style="display:none" class="error-msg">
+    <h3>⚠️ تعذّر تحميل الجدول</h3>
+    <p id="error-text"></p>
+  </div>
+  <div class="overflow-x" id="schedule-wrap" style="display:none">
+    <table class="schedule-table" id="schedule-table"></table>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xtbjiymqagyneqjqbsma.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0YmppeW1xYWd5bmVxanFic21hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MzkyMTIsImV4cCI6MjA1ODQxNTIxMn0.Iz6J4bBEdpW8_OtRs94GtYO_CXfRU3ZvJJVz_UFUe7E';
+
+const SCHOOL_LOGOS = {
+  'قناديل': '/schools/qanadeel.png',
+  'أجيال': '/schools/agial.png',
+  'ضاحية': (name) => name.includes('بنات') ? '/schools/aldahia-girls.png' : '/schools/aldahia-boys.png',
+};
+
+const DAYS_ORDER = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+const DAYS_LABELS = { sunday:'الأحد', monday:'الاثنين', tuesday:'الثلاثاء', wednesday:'الأربعاء', thursday:'الخميس', friday:'الجمعة', saturday:'السبت' };
+
+let STATE = { school: null, settings: null, classes: [], teachers: [], entries: [], subjects: {}, classrooms: {}, view: 'class' };
+
+const params = new URLSearchParams(window.location.search);
+const schoolId = params.get('school');
+
+async function sb(path) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`, 'Accept': 'application/json' }
+  });
+  if (!res.ok) { const t = await res.text(); throw new Error(`HTTP ${res.status}: ${t}`); }
+  return res.json();
+}
+
+function getSchoolLogo(name) {
+  if (!name) return null;
+  if (name.includes('قناديل')) return '/schools/qanadeel.png';
+  if (name.includes('أجيال')) return '/schools/agial.png';
+  if (name.includes('الضاحية')) return name.includes('بنات') ? '/schools/aldahia-girls.png' : '/schools/aldahia-boys.png';
+  return null;
+}
+
+function addMins(h, m, mins) {
+  const total = h * 60 + m + mins;
+  return `${String(Math.floor(total/60)%24).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;
+}
+
+async function init() {
+  if (!schoolId) { showError('لم يتم تحديد المدرسة. تأكد من الرابط.'); return; }
+
+  try {
+    const [schoolData, settingsData, classesData, teachersData, subjectsData, classroomsData, entriesData] = await Promise.all([
+      sb(`schools?id=eq.${schoolId}&select=id,name,logo_url`),
+      sb(`school_settings?school_id=eq.${schoolId}&select=*`),
+      sb(`classes?school_id=eq.${schoolId}&select=id,name,stage&order=name`),
+      sb(`teachers?school_id=eq.${schoolId}&select=id,full_name&order=full_name`),
+      sb(`subjects?school_id=eq.${schoolId}&select=id,name,color`),
+      sb(`classrooms?school_id=eq.${schoolId}&select=id,name`),
+      sb(`schedule_entries?school_id=eq.${schoolId}&select=id,day,period_no,class_id,subject_id,teacher_id,classroom_id`),
+    ]);
+
+    const school = schoolData[0];
+    if (!school) { showError('المدرسة غير موجودة أو الرابط غير صحيح.'); return; }
+
+    STATE.school = school;
+    STATE.settings = settingsData[0] || {};
+    STATE.classes = classesData;
+    STATE.teachers = teachersData;
+    STATE.entries = entriesData;
+    STATE.subjects = Object.fromEntries(subjectsData.map(s => [s.id, s]));
+    STATE.classrooms = Object.fromEntries(classroomsData.map(r => [r.id, r]));
+    STATE.teachersMap = Object.fromEntries(teachersData.map(t => [t.id, t]));
+
+    // Update header
+    document.getElementById('school-name').textContent = school.name;
+    document.title = `جدول ${school.name}`;
+    const logoPath = school.logo_url || getSchoolLogo(school.name);
+    if (logoPath) {
+      const logoEl = document.getElementById('school-logo');
+      const base = window.location.pathname.replace(/\/[^\/]*$/, '/');
+      logoEl.src = base + logoPath.replace(/^\//, '');
+      logoEl.style.display = '';
+    }
+
+    const days = (STATE.settings.working_days || ['sunday','monday','tuesday','wednesday','thursday']);
+    const periods = STATE.settings.periods_per_day || 7;
+    document.getElementById('meta-info').textContent = `${days.length} أيام • ${periods} حصص/يوم • ${entriesData.length} حصة مجدولة`;
+
+    // Show controls
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('controls').style.display = 'flex';
+    document.getElementById('schedule-wrap').style.display = '';
+
+    switchView('class');
+
+  } catch(e) {
+    showError(e.message || 'خطأ في تحميل البيانات. قد تكون البيانات محمية أو الرابط منتهي.');
+  }
+}
+
+function switchView(v) {
+  STATE.view = v;
+  document.getElementById('tab-class').className = 'tab-btn' + (v === 'class' ? ' active' : '');
+  document.getElementById('tab-teacher').className = 'tab-btn' + (v === 'teacher' ? ' active' : '');
+  const sel = document.getElementById('entity-select');
+  sel.innerHTML = '<option value="">اختر...</option>';
+  const list = v === 'class' ? STATE.classes : STATE.teachers;
+  list.forEach(item => {
+    const opt = document.createElement('option');
+    opt.value = item.id;
+    opt.textContent = v === 'class' ? item.name : item.full_name;
+    sel.appendChild(opt);
+  });
+  if (list.length > 0) { sel.value = list[0].id; renderSchedule(); }
+  else renderSchedule();
+}
+
+function renderSchedule() {
+  const entityId = document.getElementById('entity-select').value;
+  const table = document.getElementById('schedule-table');
+  const settings = STATE.settings;
+
+  const days = [...(settings.working_days || ['sunday','monday','tuesday','wednesday','thursday'])].sort((a,b) => DAYS_ORDER.indexOf(a) - DAYS_ORDER.indexOf(b));
+  const periodsPerDay = settings.periods_per_day || 7;
+  const breakAfter = settings.break_after_period || 0;
+  const periodDur = settings.period_duration_min || 45;
+  const breakDur = settings.break_duration_min || 15;
+  const startTime = (settings.first_period_start || '08:00').slice(0,5);
+  const [sh, sm] = startTime.split(':').map(Number);
+
+  // Calculate period times
+  const periodTimes = [];
+  let cur = sh * 60 + sm;
+  for (let p = 1; p <= periodsPerDay; p++) {
+    periodTimes.push({ start: cur, end: cur + periodDur });
+    cur += periodDur;
+    if (breakAfter > 0 && p === breakAfter) cur += breakDur;
+  }
+
+  // Load prayer breaks from localStorage
+  let prayerBreaks = [];
+  try {
+    const stored = localStorage.getItem(`prayer_breaks_${schoolId}`);
+    if (stored) prayerBreaks = JSON.parse(stored);
+  } catch(e) {}
+
+  // Build columns
+  const cols = [];
+  for (let p = 1; p <= periodsPerDay; p++) {
+    cols.push({ type: 'period', num: p, time: periodTimes[p-1] });
+    if (breakAfter > 0 && p === breakAfter) cols.push({ type: 'break', label: '☕ فسحة', dur: breakDur, variant: 'amber' });
+    if (periodTimes[p-1]) {
+      const end = periodTimes[p-1].end;
+      const next = periodTimes[p]?.start || Infinity;
+      prayerBreaks.forEach(pb => {
+        const [ph, pm] = pb.time.split(':').map(Number);
+        const pbm = ph*60 + pm;
+        if (pbm >= end && (p === periodsPerDay || pbm < next)) {
+          cols.push({ type: 'break', label: '🕌 ' + pb.label, dur: pb.duration_min, variant: 'green' });
+        }
+      });
+    }
+  }
+
+  // Filter entries
+  const entries = STATE.entries.filter(e => STATE.view === 'class' ? e.class_id === entityId : e.teacher_id === entityId);
+  const grid = {};
+  entries.forEach(e => { grid[`${e.day}:${e.period_no}`] = e; });
+
+  // Build table HTML
+  let html = '<thead><tr>';
+  html += '<th style="min-width:70px">اليوم</th>';
+  cols.forEach((col, ci) => {
+    if (col.type === 'period') {
+      const t = col.time ? `<span class="time-label">${String(Math.floor(col.time.start/60)).padStart(2,'0')}:${String(col.time.start%60).padStart(2,'0')}</span>` : '';
+      html += `<th style="min-width:110px">حصة ${col.num}${t}</th>`;
+    } else {
+      html += `<th class="break-header break-${col.variant}" style="min-width:55px">${col.label}<br><small>${col.dur} د</small></th>`;
+    }
+  });
+  html += '</tr></thead><tbody>';
+
+  days.forEach(day => {
+    html += `<tr><td class="day-cell">${DAYS_LABELS[day] || day}</td>`;
+    cols.forEach(col => {
+      if (col.type === 'break') {
+        html += `<td class="break-cell break-${col.variant}">${col.label}</td>`;
+        return;
+      }
+      const e = grid[`${day}:${col.num}`];
+      if (e) {
+        const subj = STATE.subjects[e.subject_id] || {};
+        const teacher = STATE.teachersMap[e.teacher_id] || {};
+        const room = STATE.classrooms[e.classroom_id] || {};
+        const color = subj.color || '#94a3b8';
+        const otherLabel = STATE.view === 'class' ? teacher.full_name : (STATE.classes.find(c => c.id === e.class_id)?.name || '');
+        html += `<td><div class="entry-card" style="border-right-color:${color}">
+          <div class="subject" title="${subj.name || ''}">${subj.name || '—'}</div>
+          <div class="teacher">${otherLabel || ''}</div>
+          ${room.name ? `<div class="room">📍 ${room.name}</div>` : ''}
+        </div></td>`;
+      } else {
+        html += `<td><div class="empty-cell"></div></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function showError(msg) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('error-div').style.display = '';
+  document.getElementById('error-text').textContent = msg;
+}
+
+init();
+</script>
+</body>
+</html>
