@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/page-helpers";
 import { DAYS, STAGES, stageLabel, type DayOfWeek, type EducationStage } from "@/lib/constants";
 import { downloadScheduleExcel } from "@/lib/excel-export";
+import { getSchoolLogo } from "@/lib/school-branding";
 
 export const Route = createFileRoute("/_app/schedule")({ component: SchedulePage });
 
@@ -215,9 +216,27 @@ function SchedulePage() {
       ) : (
         <div ref={printRef}>
           {/* Print header */}
-          <div className="hidden print:block text-center mb-4 border-b pb-4">
-            <h2 className="text-xl font-bold">{school?.name ?? "الجدول الدراسي"}</h2>
-            <p className="text-base mt-1">{viewLabel}: <span className="font-semibold">{titleName}</span></p>
+          <div className="hidden print:block mb-6 border-b pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {getSchoolLogo(school?.name, school?.logo_url) && (
+                  <img
+                    src={getSchoolLogo(school?.name, school?.logo_url)!}
+                    alt={school?.name ?? ""}
+                    className="h-16 w-16 object-contain"
+                  />
+                )}
+                <div>
+                  <h2 className="text-xl font-bold">{school?.name ?? "الجدول الدراسي"}</h2>
+                  <p className="text-sm text-gray-600">مجموعة المالكي التعليمية</p>
+                </div>
+              </div>
+              <div className="text-left text-sm text-gray-600">
+                <p className="font-bold text-base">{viewLabel}</p>
+                <p className="font-semibold text-gray-800">{titleName}</p>
+                <p className="text-xs mt-1">{new Date().toLocaleDateString("ar-SA")}</p>
+              </div>
+            </div>
           </div>
           <Card><CardContent className="p-2 overflow-x-auto">
             <table className="w-full text-sm border-separate border-spacing-1">
